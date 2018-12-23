@@ -56,6 +56,32 @@ class Encoder(Module):
         return mu, sigma
 
 
+class Decoder(Module):
+    def __init__(self):
+        super(Decoder, self).__init__()
+        # force p(x|z) be of unit variance
+        self.latent_size = 2
+        self.hidden_size = 300
+        self.img_edge = 28
+        self.reconstruct_size = self.img_edge**2
+
+        self.fc1 = nn.Linear(
+            in_features=self.latent_size,
+            out_features=self.hidden_size
+        )
+        self.fc2 = nn.Linear(
+            in_features=self.hidden_size,
+            out_features=self.reconstruct_size
+        )
+
+    def forward(self, x):
+        # x.shape should be (batch_size*sample_num, latent_size)
+        x = F.relu(self.fc1(x))
+        mu = self.fc2(x)
+        mu = mu.view(x.shape[0], 1, self.img_edge, self.img_edge)
+        return mu
+
+
 for data, label in train_loader:
     pass
 
