@@ -146,12 +146,6 @@ for epoch in range(max_epochs):
         )
     )
 
-    '''
-    print('datatype', type(data))
-    print('labeltype', type(label))
-    print('datashape', data.shape)
-    print('labelshape', label.shape)
-
-    plt.imshow(data[0, 0, :, :])
-    plt.show()
-    '''
+# save decoder weights
+decoder_params = decoder.state_dict()
+torch.save(decoder_params, 'decoder.pth')
