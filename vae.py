@@ -1,3 +1,4 @@
+import pdb
 import numpy as np
 import torch
 import torchvision
@@ -7,6 +8,7 @@ import matplotlib.pyplot as plt
 import torch.nn as nn
 from torch.nn import Module
 import torch.nn.functional as F
+import math
 
 data_root = './data'
 if not os.path.exists(data_root):
@@ -21,7 +23,7 @@ train_dataset = torchvision.datasets.MNIST(
     root=data_root, train=True, transform=train_data_transform, 
     download=True)
 
-train_batch_size = 4
+train_batch_size = 100
 latent_size = 2
 
 train_loader = torch.utils.data.DataLoader(
@@ -53,7 +55,7 @@ class Encoder(Module):
         x = x.view(x.shape[0], -1)
         x = F.relu(self.fc1(x))
         mu = self.fc_mu(x)
-        sigma = self.fc_sigma(x)
+        sigma = F.relu(self.fc_sigma(x))
         return mu, sigma
 
 
@@ -101,6 +103,7 @@ encoder.train()
 decoder.train()
 
 max_epochs = 100
+eps = 1e-4
 
 for epoch in range(max_epochs):
     mean_rec_loss = 0
@@ -124,16 +127,20 @@ for epoch in range(max_epochs):
         # get loss terms
         rec_loss = torch.sum((data - mu_x)**2)
         kl_loss = torch.sum(
-            mu_z**2 + sigma_z**2 - 2*torch.log(sigma_z)
+            mu_z**2 + sigma_z**2 - 2*torch.log(sigma_z+eps)
         )
+
+        mean_rec_loss += rec_loss.item()
+        mean_kl_loss += kl_loss.item()
+
+        if math.isnan(mean_kl_loss):
+            print('nan encountered')
+            pdb.set_trace()
 
         loss = (rec_loss + kl_loss) / train_batch_size
         # backprop
         loss.backward()
         optimizer.step()
-
-        mean_rec_loss += rec_loss.item()
-        mean_kl_loss += kl_loss.item()
 
     mean_rec_loss /= len(train_dataset)
     mean_kl_loss /= len(train_dataset)
