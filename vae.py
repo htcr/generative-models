@@ -22,6 +22,7 @@ train_dataset = torchvision.datasets.MNIST(
     download=True)
 
 train_batch_size = 4
+latent_size = 2
 
 train_loader = torch.utils.data.DataLoader(
     dataset=train_dataset, batch_size=train_batch_size, 
@@ -29,11 +30,11 @@ train_loader = torch.utils.data.DataLoader(
 
 
 class Encoder(Module):
-    def __init__(self):
+    def __init__(self, latent_size):
         super(Encoder, self).__init__()
         self.input_size = 28**2
         self.hidden_size = 300
-        self.latent_size = 2
+        self.latent_size = latent_size
 
         self.fc1 = nn.Linear(
             in_features=self.input_size, 
@@ -57,10 +58,10 @@ class Encoder(Module):
 
 
 class Decoder(Module):
-    def __init__(self):
+    def __init__(self, latent_size):
         super(Decoder, self).__init__()
         # force p(x|z) be of unit variance
-        self.latent_size = 2
+        self.latent_size = latent_size
         self.hidden_size = 300
         self.img_edge = 28
         self.reconstruct_size = self.img_edge**2
@@ -81,9 +82,69 @@ class Decoder(Module):
         mu = mu.view(x.shape[0], 1, self.img_edge, self.img_edge)
         return mu
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-for data, label in train_loader:
-    pass
+sample_num = 1
+encoder, decoder = Encoder(latent_size), Decoder(latent_size)
+encoder, decoder = encoder.to(device), decoder.to(device)
+
+
+params = list(encoder.parameters()) + list(decoder.parameters())
+optimizer = torch.optim.Adam(params)
+
+epsilon_sampler = torch.distributions.MultivariateNormal(
+    torch.zeros(latent_size).to(device), 
+    torch.eye(latent_size).to(device)
+)
+
+encoder.train()
+decoder.train()
+
+max_epochs = 100
+
+for epoch in range(max_epochs):
+    mean_rec_loss = 0
+    mean_kl_loss = 0
+    mean_loss = 0
+
+    for data, label in train_loader:
+        data = data.to(device)
+        optimizer.zero_grad()
+        
+        # get q(z|x)
+        mu_z, sigma_z = encoder(data) # (batch_size, latent_size)
+        # (batch_size, latent_size)
+        epsilon = epsilon_sampler.sample(torch.Size([train_batch_size])) 
+        # sample z ~ q(z|x)
+        z = mu_z + epsilon * sigma_z # (batch_size, latent_size)
+
+        # get p(x|z)
+        mu_x = decoder(z)
+
+        # get loss terms
+        rec_loss = torch.sum((data - mu_x)**2)
+        kl_loss = torch.sum(
+            mu_z**2 + sigma_z**2 - 2*torch.log(sigma_z)
+        )
+
+        loss = (rec_loss + kl_loss) / train_batch_size
+        # backprop
+        loss.backward()
+        optimizer.step()
+
+        mean_rec_loss += rec_loss.item()
+        mean_kl_loss += kl_loss.item()
+
+    mean_rec_loss /= len(train_dataset)
+    mean_kl_loss /= len(train_dataset)
+    mean_loss = mean_rec_loss + mean_kl_loss
+
+    print(
+        'Epoch {}/{} Loss: {} Rec: {} KL: {}'.format(
+            epoch, max_epochs, mean_loss, 
+            mean_rec_loss, mean_kl_loss
+        )
+    )
 
     '''
     print('datatype', type(data))
