@@ -1,4 +1,3 @@
-import pdb
 import numpy as np
 import torch
 import torchvision
@@ -9,11 +8,20 @@ import torch.nn as nn
 from torch.nn import Module
 import torch.nn.functional as F
 import math
+import datetime
 from vae_model import Encoder, Decoder
 
 data_root = './data'
 if not os.path.exists(data_root):
     os.makedirs(data_root)
+
+exp_name = 'baseline'
+exp_time = str(datetime.datetime.now())
+exp_record_name = '_'.join(['exp', exp_name, exp_time])
+exp_record_dir = './exps'
+exp_record_path = os.path.join(exp_record_dir, exp_record_name)
+if not os.path.exists(exp_record_path):
+    os.makedirs(exp_record_path)
 
 train_data_transform = transforms.Compose([
     transforms.ToTensor(),
@@ -41,7 +49,7 @@ encoder, decoder = encoder.to(device), decoder.to(device)
 
 
 params = list(encoder.parameters()) + list(decoder.parameters())
-optimizer = torch.optim.Adam(params, lr=1e-2)
+optimizer = torch.optim.Adam(params, lr=1e-3)
 
 epsilon_sampler = torch.distributions.MultivariateNormal(
     torch.zeros(latent_size).to(device), 
@@ -51,8 +59,17 @@ epsilon_sampler = torch.distributions.MultivariateNormal(
 encoder.train()
 decoder.train()
 
-max_epochs = 100
+max_epochs = 5
 eps = 1e-4
+
+sample_seen = 0
+loss_record_path = os.path.join(exp_record_path, 'loss.txt')
+kl_loss_record_path = os.path.join(exp_record_path, 'kl_loss.txt')
+rec_loss_record_path = os.path.join(exp_record_path, 'rec_loss.txt')
+
+f_loss = open(loss_record_path, 'a+')
+f_kl_loss = open(kl_loss_record_path, 'a+')
+f_rec_loss = open(rec_loss_record_path, 'a+')
 
 for epoch in range(max_epochs):
     mean_rec_loss = 0
@@ -79,12 +96,16 @@ for epoch in range(max_epochs):
             mu_z**2 + sigma_z**2 - 2*torch.log(sigma_z+eps)
         )
 
-        mean_rec_loss += rec_loss.item()
-        mean_kl_loss += kl_loss.item()
+        batch_rec_loss, batch_kl_loss = rec_loss.item(), kl_loss.item()
+        record_rec_loss, record_kl_loss = batch_rec_loss / train_batch_size, batch_kl_loss / train_batch_size
+        record_loss = record_rec_loss + record_kl_loss
+        sample_seen += train_batch_size
+        f_rec_loss.write('{} {}\n'.format(sample_seen, record_rec_loss))
+        f_kl_loss.write('{} {}\n'.format(sample_seen, record_kl_loss))
+        f_loss.write('{} {}\n'.format(sample_seen, record_loss))
 
-        if math.isnan(mean_kl_loss):
-            print('nan encountered')
-            pdb.set_trace()
+        mean_rec_loss += batch_rec_loss
+        mean_kl_loss += batch_kl_loss
 
         loss = (rec_loss + kl_loss) / train_batch_size
         # backprop
@@ -102,6 +123,13 @@ for epoch in range(max_epochs):
         )
     )
 
+f_loss.close()
+f_kl_loss.close()
+f_rec_loss.close()
+
+
 # save decoder weights
 decoder_params = decoder.state_dict()
-torch.save(decoder_params, 'decoder.pth')
+decoder_save_path = os.path.join(exp_record_path, 'decoder.pth')
+torch.save(decoder_params, decoder_save_path)
+
