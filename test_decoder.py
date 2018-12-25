@@ -1,16 +1,16 @@
 import torch
-from vae_model import Decoder
+from vae_model import *
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import norm
 
-def vis_manifold(decoder_path):
+def vis_manifold(decoder_path, decoder_type='Decoder'):
     latent_size = 2
     sample_per_dim = 20
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     decoder_param = torch.load(decoder_path)
-    decoder = Decoder(latent_size)
+    decoder = eval(decoder_type)(latent_size)
     decoder.load_state_dict(decoder_param)
     decoder.to(device)
     decoder.eval()

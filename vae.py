@@ -9,13 +9,13 @@ from torch.nn import Module
 import torch.nn.functional as F
 import math
 import datetime
-from vae_model import Encoder, Decoder
+from vae_model import *
 
 data_root = './data'
 if not os.path.exists(data_root):
     os.makedirs(data_root)
 
-exp_name = 'baseline'
+exp_name = 'big_1e_3_50epoch'
 exp_time = str(datetime.datetime.now())
 exp_record_name = '_'.join(['exp', exp_name, exp_time])
 exp_record_dir = './exps'
@@ -44,12 +44,13 @@ train_loader = torch.utils.data.DataLoader(
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 sample_num = 1
-encoder, decoder = Encoder(latent_size), Decoder(latent_size)
+encoder, decoder = Encoder_Big(latent_size), Decoder_Big(latent_size)
 encoder, decoder = encoder.to(device), decoder.to(device)
 
 
 params = list(encoder.parameters()) + list(decoder.parameters())
 optimizer = torch.optim.Adam(params, lr=1e-3)
+#optimizer = torch.optim.SGD(params, lr=1e-3, momentum=0.9)
 
 epsilon_sampler = torch.distributions.MultivariateNormal(
     torch.zeros(latent_size).to(device), 
@@ -59,7 +60,7 @@ epsilon_sampler = torch.distributions.MultivariateNormal(
 encoder.train()
 decoder.train()
 
-max_epochs = 5
+max_epochs = 3
 eps = 1e-4
 
 sample_seen = 0
@@ -132,4 +133,8 @@ f_rec_loss.close()
 decoder_params = decoder.state_dict()
 decoder_save_path = os.path.join(exp_record_path, 'decoder.pth')
 torch.save(decoder_params, decoder_save_path)
+
+# record decoder type
+with open(os.path.join(exp_record_path, 'decoder_type.txt'), 'w') as f:
+    f.write('{}'.format(type(decoder).__name__))
 
