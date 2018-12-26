@@ -31,7 +31,7 @@ exp1_path = os.path.join(exp_record_dir,
     'exp_baseline_1e_3_50epoch_2018-12-24 21:53:55.751986'
 )
 exp2_path = os.path.join(exp_record_dir, 
-    'exp_big_1e_3_50epoch_2018-12-25 16:53:12.281424'
+    'exp_adameps_1e_3_50epoch_2018-12-25 23:50:45.361881'
 )
 data1 = get_exp_data(exp1_path)
 data2 = get_exp_data(exp2_path)

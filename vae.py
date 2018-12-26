@@ -15,7 +15,7 @@ data_root = './data'
 if not os.path.exists(data_root):
     os.makedirs(data_root)
 
-exp_name = 'big_1e_3_50epoch'
+exp_name = 'baseline_1e_3_50epoch'
 exp_time = str(datetime.datetime.now())
 exp_record_name = '_'.join(['exp', exp_name, exp_time])
 exp_record_dir = './exps'
@@ -44,7 +44,7 @@ train_loader = torch.utils.data.DataLoader(
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 sample_num = 1
-encoder, decoder = Encoder_Big(latent_size), Decoder_Big(latent_size)
+encoder, decoder = Encoder(latent_size), Decoder(latent_size)
 encoder, decoder = encoder.to(device), decoder.to(device)
 
 
@@ -60,7 +60,7 @@ epsilon_sampler = torch.distributions.MultivariateNormal(
 encoder.train()
 decoder.train()
 
-max_epochs = 3
+max_epochs = 50
 eps = 1e-4
 
 sample_seen = 0
