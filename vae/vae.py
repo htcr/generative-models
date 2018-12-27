@@ -11,7 +11,7 @@ import math
 import datetime
 from vae_model import *
 
-data_root = './data'
+data_root = '../data'
 if not os.path.exists(data_root):
     os.makedirs(data_root)
 

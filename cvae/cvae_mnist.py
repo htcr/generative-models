@@ -1,3 +1,4 @@
+# import pdb
 import numpy as np
 import torch
 import torchvision
@@ -11,7 +12,7 @@ import math
 import datetime
 from cvae_model import *
 
-data_root = './data'
+data_root = '../data'
 if not os.path.exists(data_root):
     os.makedirs(data_root)
 
@@ -35,6 +36,7 @@ train_dataset = torchvision.datasets.MNIST(
 
 train_batch_size = 100
 latent_size = 2
+cls_num = 10
 
 train_loader = torch.utils.data.DataLoader(
     dataset=train_dataset, batch_size=train_batch_size, 
@@ -44,13 +46,12 @@ train_loader = torch.utils.data.DataLoader(
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 sample_num = 1
-encoder, decoder = Encoder_Conv(latent_size), Decoder_Conv(latent_size)
+encoder, decoder = Encoder(latent_size), Decoder(cls_num, latent_size)
 encoder, decoder = encoder.to(device), decoder.to(device)
 
 
 params = list(encoder.parameters()) + list(decoder.parameters())
 optimizer = torch.optim.Adam(params, lr=1e-3)
-#optimizer = torch.optim.SGD(params, lr=1e-3, momentum=0.9)
 
 epsilon_sampler = torch.distributions.MultivariateNormal(
     torch.zeros(latent_size).to(device), 
@@ -80,6 +81,11 @@ for epoch in range(max_epochs):
     for data, label in train_loader:
         data = data.to(device)
         optimizer.zero_grad()
+
+        # get y, one-hot float tensor of shape (batch_size, cls_num)
+        # label is LongTensor of shape (batch_size,)
+        y = torch.zeros(train_batch_size, cls_num).to(device)
+        y[np.arange(train_batch_size, dtype=np.int64), label] = 1.0
         
         # get q(z|x)
         mu_z, sigma_z = encoder(data) # (batch_size, latent_size)
@@ -88,8 +94,8 @@ for epoch in range(max_epochs):
         # sample z ~ q(z|x)
         z = mu_z + epsilon * sigma_z # (batch_size, latent_size)
 
-        # get p(x|z)
-        mu_x = decoder(z)
+        # get p(x|z, y)
+        mu_x = decoder(z, y)
 
         # get loss terms
         rec_loss = torch.sum((data - mu_x)**2)
@@ -135,7 +141,8 @@ decoder_save_path = os.path.join(exp_record_path, 'decoder.pth')
 torch.save(decoder_params, decoder_save_path)
 
 # record decoder type
-with open(os.path.join(exp_record_path, 'decoder_type.txt'), 'w') as f:
+with open(os.path.join(exp_record_path, 'decoder_info.txt'), 'w') as f:
     f.write('{}\n'.format(type(decoder).__name__))
     f.write('{}\n'.format(latent_size))
+    f.write('{}\n'.format(cls_num))
 
