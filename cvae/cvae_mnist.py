@@ -16,7 +16,7 @@ data_root = '../data'
 if not os.path.exists(data_root):
     os.makedirs(data_root)
 
-exp_name = 'conv_1e_3_50epoch'
+exp_name = 'emnist_convl8_1e_3_50epoch'
 exp_time = str(datetime.datetime.now())
 exp_record_name = '_'.join(['exp', exp_name, exp_time])
 exp_record_dir = './exps'
@@ -29,14 +29,26 @@ train_data_transform = transforms.Compose([
     transforms.Normalize((0.5,), (1.0,))
 ])
 
-train_dataset = torchvision.datasets.MNIST(
-    root=data_root, train=True, transform=train_data_transform, 
-    download=True
-)
+dataset_name = 'EMNIST'
+transpose_image = False
+
+if dataset_name == 'MNIST':
+    train_dataset = torchvision.datasets.MNIST(
+        root=data_root, train=True, transform=train_data_transform, 
+        download=True
+    )
+    cls_num = 10
+elif dataset_name == 'EMNIST':
+    train_dataset = torchvision.datasets.EMNIST(
+        root=os.path.join(data_root, 'emnist'), split='balanced', train=True, transform=train_data_transform, 
+        download=True
+    )
+    cls_num = 47
+    transpose_image = True
 
 train_batch_size = 100
-latent_size = 8
-cls_num = 10
+latent_size = 16
+
 
 train_loader = torch.utils.data.DataLoader(
     dataset=train_dataset, batch_size=train_batch_size, 
@@ -80,6 +92,8 @@ for epoch in range(max_epochs):
 
     for data, label in train_loader:
         data = data.to(device)
+        if transpose_image:
+            data = data.transpose(2, 3)
         optimizer.zero_grad()
 
         # get y, one-hot float tensor of shape (batch_size, cls_num)
