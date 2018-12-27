@@ -9,13 +9,13 @@ from torch.nn import Module
 import torch.nn.functional as F
 import math
 import datetime
-from vae_model import *
+from cvae_model import *
 
 data_root = './data'
 if not os.path.exists(data_root):
     os.makedirs(data_root)
 
-exp_name = 'latent8conv_1e_3_50epoch'
+exp_name = 'baseline_1e_3_50epoch'
 exp_time = str(datetime.datetime.now())
 exp_record_name = '_'.join(['exp', exp_name, exp_time])
 exp_record_dir = './exps'
@@ -34,7 +34,7 @@ train_dataset = torchvision.datasets.MNIST(
 )
 
 train_batch_size = 100
-latent_size = 8
+latent_size = 2
 
 train_loader = torch.utils.data.DataLoader(
     dataset=train_dataset, batch_size=train_batch_size, 
