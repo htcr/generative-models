@@ -16,7 +16,7 @@ data_root = '../data'
 if not os.path.exists(data_root):
     os.makedirs(data_root)
 
-exp_name = 'baseline_1e_3_50epoch'
+exp_name = 'conv_1e_3_50epoch'
 exp_time = str(datetime.datetime.now())
 exp_record_name = '_'.join(['exp', exp_name, exp_time])
 exp_record_dir = './exps'
@@ -35,7 +35,7 @@ train_dataset = torchvision.datasets.MNIST(
 )
 
 train_batch_size = 100
-latent_size = 2
+latent_size = 8
 cls_num = 10
 
 train_loader = torch.utils.data.DataLoader(
@@ -46,7 +46,7 @@ train_loader = torch.utils.data.DataLoader(
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 sample_num = 1
-encoder, decoder = Encoder(latent_size), Decoder(cls_num, latent_size)
+encoder, decoder = Encoder_Conv(latent_size), Decoder_Conv(cls_num, latent_size)
 encoder, decoder = encoder.to(device), decoder.to(device)
 
 

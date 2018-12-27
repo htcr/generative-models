@@ -94,21 +94,27 @@ class Encoder_Conv(Module):
 
 
 class Decoder_Conv(Module):
-    def __init__(self, latent_size):
+    def __init__(self, class_num, latent_size):
         super(Decoder_Conv, self).__init__()
         # force p(x|z) be of unit variance
         self.latent_size = latent_size
+        self.class_num = class_num
 
-        self.fc3 = nn.Linear(self.latent_size, 64)
+        self.fc_code = nn.Linear(self.latent_size, 32)
+        self.fc_label = nn.Linear(self.class_num, 32)
         self.fc2 = nn.Linear(64, 128)
         self.fc1 = nn.Linear(128, 256)
         self.conv2 = nn.ConvTranspose2d(16, 8, 5)
         self.conv1 = nn.ConvTranspose2d(8, 1, 5)
 
-    def forward(self, x):
-        # x.shape should be (batch_size*sample_num, latent_size)
-        out = F.relu(self.fc3(x))
-        out = F.relu(self.fc2(out))
+    def forward(self, z, y):
+        # z.shape should be (batch_size*sample_num, latent_size)
+        # y.shape should be (batch_size*sample_num, cls_num)
+        z = self.fc_code(z)
+        y = self.fc_label(y)
+        zy = F.relu(torch.cat((z, y), 1))
+        
+        out = F.relu(self.fc2(zy))
         out = F.relu(self.fc1(out))
         out = out.view(out.size(0), 16, 4, 4)
         out = F.upsample(out, scale_factor=2)
